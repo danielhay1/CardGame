@@ -1,7 +1,5 @@
-package com.example.cardgame;
+package objects;
 
-
-import android.util.Log;
 
 import java.util.List;
 import java.util.Stack;

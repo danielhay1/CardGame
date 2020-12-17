@@ -1,14 +1,17 @@
-package com.example.cardgame;
+package objects;
 
-import android.app.Activity;
-import android.content.Context;
-import android.content.Intent;
+import android.location.Location;
 import android.util.Log;
-import android.widget.ImageView;
-import android.widget.TextView;
+
+import com.google.android.gms.maps.model.LatLng;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import untils.MyLocationServices;
+import untils.MyPreference;
+import untils.MySignal;
 
 public class Game {
     //Constants
@@ -23,9 +26,9 @@ public class Game {
 
     public Game() {}
 
-    public Game(Context gameActivitycontext, String player1Name, String player2Name) {
+    public Game(String player1Name, String player2Name) {
         //Init card pack
-        this.cardPack = initCardPack(gameActivitycontext);
+        this.cardPack = initCardPack();
         this.shufflePack(this.cardPack);
         //init players
         this.initPlayers(player1Name,player2Name,this.cardPack);
@@ -42,7 +45,7 @@ public class Game {
         return player2;
     }
 
-    private ArrayList<Card> initCardPack(Context gameActivitycontext) {
+    private ArrayList<Card> initCardPack() {
         ArrayList<Card> cardPack = new ArrayList<Card>();
         String imgPrefix = "img_card_";
         for (int value = 2; value <= MAX_CARD_VALUE; value++) {
@@ -52,9 +55,7 @@ public class Game {
             for (int i = 0; i < CARD_SHAPES_AMOUNT; i++) {
                 String imgName = imgLongerPrefix+"_"+ shape;
                 Log.d("pttt", "imgName: [\""+imgName+"\"]");
-                int imgId = gameActivitycontext.getResources().getIdentifier(imgName, "drawable", gameActivitycontext.getPackageName());
-                cardPack.add(new Card(imgId,value));
-                Log.d("pttt", "----------------------");
+                cardPack.add(new Card(imgName,value));
                 shape++;
             }
         }
@@ -92,7 +93,6 @@ public class Game {
             return this.player2;
     }
 
-
     public String roundWinner(Card player1Card,Card player2Card) {
         /**
          * param Card,Card.
@@ -120,6 +120,59 @@ public class Game {
         }
     }
 
+    public void saveRecord(String name, int score) {
+        /**
+         * Method gets name,score and set current location,
+         * when location is detected (if location not found location will be (0,0)), method create new record
+         * and save it to topScore if scoreboard record broke.
+         */
+        MyLocationServices.getInstance().setLastBestLocation(new MyLocationServices.CallBack_Location() {
+            LatLng currentLocation;
+            @Override
+            public void locationReady(Location location) {
+                currentLocation = new LatLng(location.getLatitude(),location.getLongitude());
+                setRecord(name,score,currentLocation);
+            }
+            @Override
+            public void onError(String error) {
+                Log.d("pttt", "onError: "+error);
+                currentLocation = new LatLng(0,0);
+                setRecord(name,score,currentLocation);
+            }
+        });
+    }
+
+    private void setRecord(String name, int score,LatLng latlng) {
+        TopScores topScores = loadTopScores(MyPreference.KEYS.TOP_SCORES_ARRAY);
+        if (topScores == null) {
+            Log.d("pttt", "saveRecord:Init topRecord");
+            topScores = new TopScores();
+        }
+        Record record = new Record(name, latlng.latitude,latlng.longitude, score);
+        Log.d("pttt", "saveRecord:Record "+record.toString());
+
+        boolean isInserted = topScores.insertRecord(record);
+        if (isInserted) {
+            //Record inserted into topScores
+            //Save topScores by json into shared preference
+            saveTopScore(MyPreference.KEYS.TOP_SCORES_ARRAY,topScores);
+            MySignal.getInstance().Toast("New Record!");
+        }
+        Log.d("pttt", "TopScores:\n"+topScores);
+    }
+
+    private TopScores loadTopScores(String key) {
+        return (TopScores) MyPreference.getInstance().getTopScore(key);
+    }
+
+    private void saveTopScore(String key, TopScores topScores) {
+        MyPreference.getInstance().putObject(key,topScores);
+    }
+
+    public void deleteTopScores(String key) {
+        MyPreference.getInstance().deleteKey(key);
+    }
+
     public boolean gameOver(){
         if((this.getPlayer1().packIsEmpty()) || (this.getPlayer2().packIsEmpty()))
             return true;
@@ -127,12 +180,11 @@ public class Game {
             return false;
     }
 
-    //Debug methods:
     private void printPack(List<Card> pack) {
         int i=0;
         for (Card card: pack) {
             i++;
-            Log.d("pttt", "Card "+i+", value:"+card.getValue()+"\tid"+card.getImgId());
+            Log.d("pttt", "Card "+i+", value:"+card.getValue()+"\tname: "+card.getName());
         }
     }
 }

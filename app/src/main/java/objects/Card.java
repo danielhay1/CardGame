@@ -1,27 +1,27 @@
-package com.example.cardgame;
+package objects;
 
 import android.util.Log;
 
 public class Card {
     private final int MAX_CARD_VALUE = 14;
     private int value;
-    private int imgId;
+    private String name;
 
     public Card() { }
 
-    public Card(int imgId, int value) {
-        this.imgId = imgId;
+    public Card(String name, int value) {
+        this.name = name;
         try {
             this.setValue(value);
-        } catch (cardValueException e) {
+        } catch (CardValueException e) {
             e.getMessage();
             Log.d("pttt", ""+e.getMessage());
         }
     }
 
-    private void setValue(int value) throws cardValueException {
+    private void setValue(int value) throws CardValueException {
         if(value > MAX_CARD_VALUE)
-            throw new cardValueException("Illegal value inserted");
+            throw new CardValueException("Illegal value inserted");
         else
             this.value = value;
     }
@@ -30,7 +30,7 @@ public class Card {
         return value;
     }
 
-    public int getImgId() {
-        return this.imgId;
+    public String getName() {
+        return this.name;
     }
 }
